@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 align="center">Works log</h2>
+{% for elem in data %}
+<h4 style="margin-left: 70px; color: black">Action # {{loop.index}}</h4>
+<table class="table" align="center">
+    <thead>
+    <tr class="table-secondary">
+        <th scope="col" width="30%">Title of activity</th>
+        <th scope="col" width="20%">Team leader</th>
+        <th scope="col" width="10%">Duration</th>
+        <th scope="col" width="15%">List of collaborators</th>
+        <th scope="col" width="15%">Is finished</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr class="table-info table-center-vertical">
+        <td>{{ elem[0] }}</td>
+        <td>{{ data_leaders[elem[1]] }}</td>
+        <td>{{ elem[2] }}</td>
+        <td align="center">{{ elem[3] }}</td>
+        <td class="table-danger" align="center">{% if elem[4] %} Is finished {% else %} Is not finished {% endif %}</td>
+    </tr>
+    </tbody>
+</table>
+{% endfor %}
+{% endblock %}
