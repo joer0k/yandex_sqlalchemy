@@ -1,10 +1,11 @@
 from datetime import datetime
+from os import abort
 
-from flask import Flask, render_template, redirect
+from flask import Flask, render_template, redirect, request, abort
 from data import db_session
 from data.users import User
 from data.jobs import Jobs
-from flask_login import LoginManager, login_user, login_required, logout_user
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from data.login_form import LoginForm
 from data.register_form import RegisterForm
 from data.job_form import JobForm
@@ -49,6 +50,7 @@ def register():
 
 
 @app.route('/addjob', methods=['GET', 'POST'])
+@login_required
 def add_job():
     form = JobForm()
     if form.validate_on_submit():
@@ -72,7 +74,61 @@ def add_job():
         session.add(job)
         session.commit()
         return redirect('/')
-    return render_template('job_form.html', form=form)
+    return render_template('job_form.html', form=form, title='Добавление работы')
+
+
+@app.route('/edit_job/<int:id_job>', methods=['GET', 'POST'])
+@login_required
+def edit_job(id_job):
+    form = JobForm()
+    session = db_session.create_session()
+    job = session.query(Jobs).get(id_job)
+    if not job:
+        abort(404)
+    if current_user.id != '1':
+        if current_user.id != job.team_leader:
+            print(current_user.id, job.team_leader, job)
+            abort(401)
+    if request.method == 'GET':
+        form.job_title.data = job.job
+        form.team_leader_id.data = job.team_leader
+        form.work_size.data = job.work_size
+        form.collaborators.data = job.collaborators
+        form.is_finished.data = job.is_finished
+    if form.validate_on_submit():
+        if session.query(Jobs).filter(Jobs.job == form.job_title.data).first() and form.job_title.data != job.job:
+            return render_template('job_form.html', form=form, message='Такая работа уже занесена в список')
+        if int(form.team_leader_id.data) <= 0:
+            return render_template('job_form.html', form=form, message='ID лидера должен быть больше 0')
+        if int(form.work_size.data) <= 0:
+            return render_template('job_form.html', form=form, message='Объем работы должен быть больше 0')
+        if not session.query(User).filter(User.id == form.team_leader_id.data).first():
+            return render_template('job_form.html', form=form, message='Неверный ID лидера')
+        job.job = form.job_title.data
+        job.team_leader_id = form.team_leader_id.data
+        job.work_size = form.work_size.data
+        job.collaborators = form.collaborators.data
+        job.is_finished = form.is_finished.data
+        session.commit()
+        return redirect('/')
+
+    return render_template('job_form.html', form=form, title='Изменение работы')
+
+
+@app.route('/delete/<int:id_job>')
+@login_required
+def delete_job(id_job):
+    session = db_session.create_session()
+    job = session.query(Jobs).get(id_job)
+    if not job:
+        abort(404)
+    if current_user.id != '1':
+        if current_user.id != job.team_leader:
+            abort(401)
+    if job:
+        session.delete(job)
+        session.commit()
+    return redirect('/')
 
 
 @app.route('/login', methods=['GET', 'POST'])
