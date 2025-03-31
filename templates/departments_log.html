@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 align="center">Works log</h2>
+{% if current_user.is_authenticated %}
+<a class="btn btn-secondary" href="/">Работы</a>
+<a class="btn btn-secondary" href="/add_dep">Добавить департамент</a>
+{% endif %}
+<p></p>
+{% for elem in data %}
+<h4 style="margin-left: 70px; color: black">Action # {{loop.index}}</h4>
+<table class="table" align="center">
+    <thead>
+    <tr class="table-secondary">
+        <th scope="col" width="30%">Title of department</th>
+        <th scope="col" width="20%">Chief</th>
+        <th scope="col" width="10%">Members</th>
+        <th scope="col" width="15%">Department email</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr class="table-info table-center-vertical">
+        <td>{{ elem[1] }}</td>
+        <td>{{ data_leaders[elem[2]] }}</td>
+        <td>{{ elem[3] }}</td>
+        <td align="center">{{ elem[4] }}</td>
+    </tr>
+    </tbody>
+</table>
+{% if current_user.is_authenticated %}
+<a class="btn btn-warning" href="/edit_dep/{{elem[0]}}">Редактировать департамент</a>
+<a class="btn btn-danger" href="/delete_dep/{{elem[0]}}">Удалить департамент</a>
+{% endif %}
+<p></p>
+{% endfor %}
+{% endblock %}

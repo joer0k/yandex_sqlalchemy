@@ -3,6 +3,7 @@
 {% block content %}
 <h2 align="center">Works log</h2>
 {% if current_user.is_authenticated %}
+<a class="btn btn-secondary" href="/departments">Департаменты</a>
 <a class="btn btn-secondary" href="/addjob">Добавить работу</a>
 {% endif %}
 <p></p>
@@ -20,17 +21,17 @@
     </thead>
     <tbody>
     <tr class="table-info table-center-vertical">
-        <td>{{ elem[0] }}</td>
-        <td>{{ data_leaders[elem[1]] }}</td>
-        <td>{{ elem[2] }}</td>
-        <td align="center">{{ elem[3] }}</td>
-        <td class="table-danger" align="center">{% if elem[4] %} Is finished {% else %} Is not finished {% endif %}</td>
+        <td>{{ elem[1] }}</td>
+        <td>{{ data_leaders[elem[2]] }}</td>
+        <td>{{ elem[3] }}</td>
+        <td align="center">{{ elem[4] }}</td>
+        <td class="table-danger" align="center">{% if elem[5] %} Is finished {% else %} Is not finished {% endif %}</td>
     </tr>
     </tbody>
 </table>
 {% if current_user.is_authenticated %}
-<a class="btn btn-warning" href="/edit_job/{{loop.index + 1}}">Редактировать работу</a>
-<a class="btn btn-danger" href="/delete/{{loop.index + 1}}">Удалить работу</a>
+<a class="btn btn-warning" href="/edit_job/{{elem[0]}}">Редактировать работу</a>
+<a class="btn btn-danger" href="/delete_job/{{elem[0]}}">Удалить работу</a>
 {% endif %}
 <p></p>
 {% endfor %}
