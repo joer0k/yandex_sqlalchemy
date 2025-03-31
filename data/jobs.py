@@ -19,6 +19,10 @@ class Jobs(SqlAlchemyBase):
 
     team_leader = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('users.id'))
     user = orm.relationship('User')
+    hazard_category_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey("hazard_category.id"),
+                                           nullable=True)
+    hazard_category = orm.relationship('HazardCategory')
+
 
     def __repr__(self):
         return f'<Job> {self.job}'

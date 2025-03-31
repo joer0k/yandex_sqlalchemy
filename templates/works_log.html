@@ -16,6 +16,7 @@
         <th scope="col" width="20%">Team leader</th>
         <th scope="col" width="10%">Duration</th>
         <th scope="col" width="15%">List of collaborators</th>
+        <th scope="col" width="10%">Hazard category</th>
         <th scope="col" width="15%">Is finished</th>
     </tr>
     </thead>
@@ -25,6 +26,7 @@
         <td>{{ data_leaders[elem[2]] }}</td>
         <td>{{ elem[3] }}</td>
         <td align="center">{{ elem[4] }}</td>
+        <td align="center">{{ elem[-1] }}</td>
         <td class="table-danger" align="center">{% if elem[5] %} Is finished {% else %} Is not finished {% endif %}</td>
     </tr>
     </tbody>

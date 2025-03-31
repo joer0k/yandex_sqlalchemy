@@ -44,7 +44,14 @@
     </div>
     {% endfor %}
     </p>
-
+    <p>
+        {{ form.hazard_category_id.label }}<br>
+        {{ form.hazard_category_id(class="form-control", type="number") }}<br>
+        {% for error in form.hazard_category_id.errors %}
+    <div class="alert alert-danger" role="alert">
+        {{ error }}
+    </div>
+    {% endfor %}
     <p>{{ form.is_finished(type="checkbox", class="form-check-input") }} {{ form.is_finished.label }}</p>
 
 

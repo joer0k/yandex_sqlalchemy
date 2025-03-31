@@ -4,6 +4,7 @@ from os import abort
 from flask import Flask, render_template, redirect, request, abort, session
 from data import db_session
 from data.departments import Department
+from data.hazard_category import HazardCategory
 from data.users import User
 from data.jobs import Jobs
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
@@ -65,13 +66,15 @@ def add_job():
             return render_template('job_form.html', form=form, message='Объем работы должен быть больше 0')
         if not session.query(User).filter(User.id == form.team_leader_id.data).first():
             return render_template('job_form.html', form=form, message='Неверный ID лидера')
-
+        if not session.query(HazardCategory).filter(HazardCategory.id == form.hazard_category_id.data).first():
+            return render_template('job_form.html', form=form, message='Неверный ID категории опасности')
         job = Jobs(
             job=form.job_title.data,
             work_size=form.work_size.data,
             collaborators=form.collaborators.data,
             is_finished=form.is_finished.data,
-            team_leader=form.team_leader_id.data
+            team_leader=form.team_leader_id.data,
+            hazard_category_id=form.hazard_category_id.data,
         )
         session.add(job)
         session.commit()
@@ -96,6 +99,7 @@ def edit_job(id_job):
         form.work_size.data = job.work_size
         form.collaborators.data = job.collaborators
         form.is_finished.data = job.is_finished
+        form.hazard_category_id.data = job.hazard_category_id
     if form.validate_on_submit():
         if session.query(Jobs).filter(Jobs.job == form.job_title.data).first() and form.job_title.data != job.job:
             return render_template('job_form.html', form=form, message='Такая работа уже занесена в список')
@@ -105,11 +109,15 @@ def edit_job(id_job):
             return render_template('job_form.html', form=form, message='Объем работы должен быть больше 0')
         if not session.query(User).filter(User.id == form.team_leader_id.data).first():
             return render_template('job_form.html', form=form, message='Неверный ID лидера')
+        if not session.query(HazardCategory).filter(HazardCategory.id == form.hazard_category_id.data).first():
+            return render_template('job_form.html', form=form, message='Неверный ID категории опасности')
         job.job = form.job_title.data
         job.team_leader_id = form.team_leader_id.data
         job.work_size = form.work_size.data
         job.collaborators = form.collaborators.data
         job.is_finished = form.is_finished.data
+        job.hazard_category_id = form.hazard_category_id.data
+
         session.commit()
         return redirect('/')
 
@@ -153,7 +161,9 @@ def index():
     data_leaders = {}
     session = db_session.create_session()
     for job in session.query(Jobs).all():
-        data_jobs.append([job.id, job.job, job.team_leader, job.work_size, job.collaborators, job.is_finished])
+        data_jobs.append(
+            [job.id, job.job, job.team_leader, job.work_size, job.collaborators, job.is_finished,
+             job.hazard_category_id])
         data_leaders[job.team_leader] = f'{job.user.surname} {job.user.name}'
     return render_template('works_log.html', data=data_jobs, data_leaders=data_leaders)
 
@@ -210,7 +220,6 @@ def edit_dep(id_dep):
         form.chief_id.data = department.chief
         form.members.data = department.members
         form.email.data = department.email
-
     if form.validate_on_submit():
         if session.query(Department).filter(Department.title == form.dep_title.data).first():
             return render_template('dep_form.html', form=form, message='Такой департамент уже существует')
