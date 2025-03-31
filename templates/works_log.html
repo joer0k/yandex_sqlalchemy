@@ -27,7 +27,11 @@
         <td>{{ elem[3] }}</td>
         <td align="center">{{ elem[4] }}</td>
         <td align="center">{{ elem[-1] }}</td>
-        <td class="table-danger" align="center">{% if elem[5] %} Is finished {% else %} Is not finished {% endif %}</td>
+        {% if elem[5] %}
+        <td class="table-danger" align="center"> Is not finished </td>
+        {% else %}
+        <td class="table-success" align="center"> Is finished </td>
+        {% endif %}
     </tr>
     </tbody>
 </table>
