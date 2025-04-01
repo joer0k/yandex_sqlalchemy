@@ -1,23 +1,28 @@
-from datetime import datetime
 from os import abort
 
-from flask import Flask, render_template, redirect, request, abort, session
-from data import db_session
-from data.departments import Department
-from data.hazard_category import HazardCategory
-from data.users import User
-from data.jobs import Jobs
+import requests
+from flask import Flask, render_template, redirect, request, abort, jsonify
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
+from werkzeug.exceptions import HTTPException
+
+from api.jobs_api import jobs_bp
+from api.users_api import users_bp
+from data import db_session
+from data.department_form import DepartmentForm
+from data.departments import Department
+from data.job_form import JobForm
 from data.login_form import LoginForm
 from data.register_form import RegisterForm
-from data.job_form import JobForm
-from data.department_form import DepartmentForm
+from data.users import User
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'yandexlyceum_secret_key'
-
+app.register_blueprint(jobs_bp, url_prefix='/api')
+app.register_blueprint(users_bp, url_prefix='/api')
 login_manager = LoginManager()
 login_manager.init_app(app)
+
+API_SERVER = 'http://127.0.0.1:8080/api'
 
 
 @login_manager.user_loader
@@ -56,29 +61,20 @@ def register():
 @login_required
 def add_job():
     form = JobForm()
-    if form.validate_on_submit():
-        session = db_session.create_session()
-        if session.query(Jobs).filter(Jobs.job == form.job_title.data).first():
-            return render_template('job_form.html', form=form, message='Такая работа уже занесена в список')
-        if int(form.team_leader_id.data) <= 0:
-            return render_template('job_form.html', form=form, message='ID лидера должен быть больше 0')
-        if int(form.work_size.data) <= 0:
-            return render_template('job_form.html', form=form, message='Объем работы должен быть больше 0')
-        if not session.query(User).filter(User.id == form.team_leader_id.data).first():
-            return render_template('job_form.html', form=form, message='Неверный ID лидера')
-        if not session.query(HazardCategory).filter(HazardCategory.id == form.hazard_category_id.data).first():
-            return render_template('job_form.html', form=form, message='Неверный ID категории опасности')
-        job = Jobs(
-            job=form.job_title.data,
-            work_size=form.work_size.data,
-            collaborators=form.collaborators.data,
-            is_finished=form.is_finished.data,
-            team_leader=form.team_leader_id.data,
-            hazard_category_id=form.hazard_category_id.data,
-        )
-        session.add(job)
-        session.commit()
-        return redirect('/')
+    if request.method == 'POST' and form.validate_on_submit():
+        job_data = {
+            'job_title': form.job_title.data,
+            'work_size': form.work_size.data,
+            'collaborators': form.collaborators.data,
+            'is_finished': form.is_finished.data,
+            'team_leader_id': form.team_leader_id.data,
+            'hazard_category_id': form.hazard_category_id.data
+        }
+        response = requests.post(f'{API_SERVER}/jobs', json=job_data)
+        if response.status_code == 201:
+            return redirect('/')
+        error_data = response.json()
+        return render_template('job_form.html', form=form, message=error_data.get('error'))
     return render_template('job_form.html', form=form, title='Добавление работы')
 
 
@@ -86,58 +82,38 @@ def add_job():
 @login_required
 def edit_job(id_job):
     form = JobForm()
-    session = db_session.create_session()
-    job = session.get(Jobs, id_job)
-    if not job:
-        abort(404)
-    if current_user.id != '1':
-        if current_user.id != job.team_leader:
-            abort(401)
     if request.method == 'GET':
-        form.job_title.data = job.job
-        form.team_leader_id.data = job.team_leader
-        form.work_size.data = job.work_size
-        form.collaborators.data = job.collaborators
-        form.is_finished.data = job.is_finished
-        form.hazard_category_id.data = job.hazard_category_id
-    if form.validate_on_submit():
-        if session.query(Jobs).filter(Jobs.job == form.job_title.data).first() and form.job_title.data != job.job:
-            return render_template('job_form.html', form=form, message='Такая работа уже занесена в список')
-        if int(form.team_leader_id.data) <= 0:
-            return render_template('job_form.html', form=form, message='ID лидера должен быть больше 0')
-        if int(form.work_size.data) <= 0:
-            return render_template('job_form.html', form=form, message='Объем работы должен быть больше 0')
-        if not session.query(User).filter(User.id == form.team_leader_id.data).first():
-            return render_template('job_form.html', form=form, message='Неверный ID лидера')
-        if not session.query(HazardCategory).filter(HazardCategory.id == form.hazard_category_id.data).first():
-            return render_template('job_form.html', form=form, message='Неверный ID категории опасности')
-        job.job = form.job_title.data
-        job.team_leader_id = form.team_leader_id.data
-        job.work_size = form.work_size.data
-        job.collaborators = form.collaborators.data
-        job.is_finished = form.is_finished.data
-        job.hazard_category_id = form.hazard_category_id.data
+        response = requests.get(f'{API_SERVER}/jobs/{id_job}')
+        if response.status_code != 200:
+            return render_template('job_form.html', form=form, title='Изменение работы',
+                                   message='Пользователь не найден')
+        job_data = response.json()
+        form = JobForm(data=job_data['jobs'][0])
+    if request.method == 'POST' and form.validate_on_submit():
+        job_data = {
+            'job_title': form.job_title.data,
+            'work_size': form.work_size.data,
+            'collaborators': form.collaborators.data,
+            'is_finished': form.is_finished.data,
+            'team_leader_id': form.team_leader_id.data,
+            'hazard_category_id': form.hazard_category_id.data
+        }
+        response = requests.put(f'{API_SERVER}/jobs/{id_job}', json=job_data)
+        if response.ok:
+            return redirect('/')
 
-        session.commit()
-        return redirect('/')
-
+        error_data = response.json()
+        return render_template('job_form.html', form=form, message=error_data.get('error', 'Ошибка обновления'))
     return render_template('job_form.html', form=form, title='Изменение работы')
 
 
 @app.route('/delete_job/<int:id_job>')
 @login_required
 def delete_job(id_job):
-    session = db_session.create_session()
-    job = session.get(Jobs, id_job)
-    if not job:
-        abort(404)
-    if current_user.id != '1':
-        if current_user.id != job.team_leader:
-            abort(401)
-    if job:
-        session.delete(job)
-        session.commit()
-    return redirect('/')
+    response = requests.delete(f'{API_SERVER}/jobs/{id_job}')
+    if response:
+        return redirect('/')
+    abort(404)
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -157,15 +133,9 @@ def login():
 
 @app.route('/')
 def index():
-    data_jobs = []
-    data_leaders = {}
-    session = db_session.create_session()
-    for job in session.query(Jobs).all():
-        data_jobs.append(
-            [job.id, job.job, job.team_leader, job.work_size, job.collaborators, job.is_finished,
-             job.hazard_category_id])
-        data_leaders[job.team_leader] = f'{job.user.surname} {job.user.name}'
-    return render_template('works_log.html', data=data_jobs, data_leaders=data_leaders)
+    jobs = requests.get(f'{API_SERVER}/jobs').json()
+    users = requests.get(f'{API_SERVER}/users').json()
+    return render_template('works_log.html', data=jobs, data_leaders=users)
 
 
 @app.route('/departments')
@@ -246,7 +216,6 @@ def delete_dep(id_dep):
         abort(404)
     if current_user.id != '1':
         if current_user.id != dep.chief:
-            print(1)
             abort(401)
     if dep:
         session.delete(dep)
@@ -259,6 +228,26 @@ def delete_dep(id_dep):
 def logout():
     logout_user()
     return redirect('/')
+
+
+@app.errorhandler(HTTPException)
+def handle_http_exception(error):
+    response = jsonify({
+        'error': error.description,
+        'status_code': error.code,
+    })
+    response.status_code = error.code
+    return response
+
+
+@app.errorhandler(Exception)
+def handle_generic_exception(error):
+    response = jsonify({
+        'error': 'Internal server Error',
+        'message': str(error)
+    })
+    response.status_code = 500
+    return response
 
 
 if __name__ == '__main__':

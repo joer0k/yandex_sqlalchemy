@@ -7,8 +7,8 @@
 <a class="btn btn-secondary" href="/addjob">Добавить работу</a>
 {% endif %}
 <p></p>
-{% for elem in data %}
-<h4 style="margin-left: 70px; color: black">Action # {{loop.index}}</h4>
+{% for elem in data['jobs'] %}
+<h4 style="margin-left: 70px; color: black">Action # {{ loop.index }}</h4>
 <table class="table" align="center">
     <thead>
     <tr class="table-secondary">
@@ -22,22 +22,24 @@
     </thead>
     <tbody>
     <tr class="table-info table-center-vertical">
-        <td>{{ elem[1] }}</td>
-        <td>{{ data_leaders[elem[2]] }}</td>
-        <td>{{ elem[3] }}</td>
-        <td align="center">{{ elem[4] }}</td>
-        <td align="center">{{ elem[-1] }}</td>
-        {% if elem[5] %}
-        <td class="table-danger" align="center"> Is not finished </td>
+        <td>{{ elem['job_title'].capitalize() }}</td>
+        <td>{{ data_leaders['users'][elem['team_leader_id']]['surname'] }} {{
+            data_leaders['users'][elem['team_leader_id']]['name'] }}
+        </td>
+        <td>{{ elem['work_size'] }}</td>
+        <td align="center">{{ elem['collaborators'] }}</td>
+        <td align="center">{{ elem['hazard_category_id'] }}</td>
+        {% if elem['is_finished'] %}
+        <td class="table-danger" align="center"> Is not finished</td>
         {% else %}
-        <td class="table-success" align="center"> Is finished </td>
+        <td class="table-success" align="center"> Is finished</td>
         {% endif %}
     </tr>
     </tbody>
 </table>
 {% if current_user.is_authenticated %}
-<a class="btn btn-warning" href="/edit_job/{{elem[0]}}">Редактировать работу</a>
-<a class="btn btn-danger" href="/delete_job/{{elem[0]}}">Удалить работу</a>
+<a class="btn btn-warning" href="/edit_job/{{ elem['id'] }}">Редактировать работу</a>
+<a class="btn btn-danger" href="/delete_job/{{ elem['id'] }}">Удалить работу</a>
 {% endif %}
 <p></p>
 {% endfor %}
