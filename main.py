@@ -182,7 +182,7 @@ def edit_dep(id_dep):
     department = session.get(Department, id_dep)
     if not department:
         abort(404)
-    if current_user.id != '1':
+    if current_user.id != 1:
         if current_user.id != department.chief:
             abort(401)
     if request.method == 'GET':
@@ -214,7 +214,7 @@ def delete_dep(id_dep):
     dep = session.get(Department, id_dep)
     if not dep:
         abort(404)
-    if current_user.id != '1':
+    if current_user.id != 1:
         if current_user.id != dep.chief:
             abort(401)
     if dep:
