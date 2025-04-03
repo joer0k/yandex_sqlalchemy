@@ -31,30 +31,102 @@ def load_user(user_id):
     return db_sess.get(User, user_id)
 
 
+@app.route('/')
+def index():
+    jobs = requests.get(f'{API_SERVER}/jobs').json()
+    users = requests.get(f'{API_SERVER}/users').json()
+    return render_template('works_log.html', data=jobs, data_leaders=users)
+
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegisterForm()
-    if form.validate_on_submit():
-        if form.password.data != form.password_repeat.data:
-            return render_template('register.html', form=form, message='Пароли не совпадают')
-        session = db_session.create_session()
-        if session.query(User).filter(User.email == form.email.data).first():
-            return render_template('register.html', form=form, message='Пользователь с такой почтой уже существует')
-        user = User(
-            surname=form.surname.data,
-            name=form.name.data,
-            age=form.age.data,
-            position=form.position.data,
-            speciality=form.speciality.data,
-            address=form.address.data,
-            email=form.email.data
+    if request.method == 'POST' and form.validate_on_submit():
+        user_data = {
+            'surname': form.surname.data,
+            'name': form.name.data,
+            'age': form.age.data,
+            'position': form.position.data,
+            'speciality': form.speciality.data,
+            'address': form.address.data,
+            'email': form.email.data,
+            'password': form.password.data,
+            'repeat_password': form.password_repeat.data,
+        }
+        response = requests.post(f'{API_SERVER}/users', json=user_data)
+        if response.status_code == 201:
+            return redirect('/login')
+        error_data = response.json()
+        return render_template('register.html', form=form, message=error_data.get('error'), edit=False)
+    return render_template('register.html', form=form, title='Регистрация', edit=False)
 
-        )
-        user.set_password(form.password.data)
-        session.add(user)
-        session.commit()
-        return redirect('/login')
-    return render_template('register.html', form=form)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        db_sess = db_session.create_session()
+        user = db_sess.query(User).filter(User.email == form.email.data).first()
+        if user and user.check_password(form.password.data):
+            login_user(user, remember=form.remember_me.data)
+            return redirect("/")
+        return render_template('login.html',
+                               message="Неправильный логин или пароль",
+                               form=form)
+    return render_template('login.html', title='Авторизация', form=form)
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect('/')
+
+
+@app.route('/edit_user/<int:id_user>', methods=['GET', 'POST'])
+@login_required
+def edit_user(id_user):
+    form = RegisterForm(is_editing=True)
+    if request.method == 'GET':
+        if current_user.id != 1:
+            if current_user.id != id_user:
+                return abort(403)
+        response = requests.get(f'{API_SERVER}/users/{id_user}')
+
+        if response.status_code != 200:
+            return render_template('register.html', form=form, title='Изменение профиля',
+                                   message='Пользователь не найден', edit=True)
+        user_data = response.json()
+        form = RegisterForm(data=user_data['users'][0], is_editing=True)
+    if request.method == 'POST' and form.validate_on_submit():
+        user_data = {
+            'surname': form.surname.data,
+            'name': form.name.data,
+            'age': form.age.data,
+            'position': form.position.data,
+            'speciality': form.speciality.data,
+            'address': form.address.data,
+            'email': form.email.data,
+        }
+        response = requests.put(f'{API_SERVER}/users/{id_user}', json=user_data)
+        if response.ok:
+            return redirect('/')
+        error_data = response.json()
+        return render_template('register.html', form=form, title='Изменение профиля',
+                               message=error_data.get('error'), edit=True)
+    return render_template('register.html', title="Редактирование пользователя", form=form, edit=True)
+
+
+@app.route('/delete_user/<int:id_user>')
+@login_required
+def delete_user(id_user):
+    if current_user.id != 1:
+        if current_user.id != id_user:
+            return abort(403)
+    response = requests.delete(f'{API_SERVER}/users/{id_user}')
+    if response:
+        return redirect('/')
+    abort(404)
 
 
 @app.route('/addjob', methods=['GET', 'POST'])
@@ -86,7 +158,7 @@ def edit_job(id_job):
         response = requests.get(f'{API_SERVER}/jobs/{id_job}')
         if response.status_code != 200:
             return render_template('job_form.html', form=form, title='Изменение работы',
-                                   message='Пользователь не найден')
+                                   message='Работа не найдена')
         job_data = response.json()
         form = JobForm(data=job_data['jobs'][0])
     if request.method == 'POST' and form.validate_on_submit():
@@ -114,28 +186,6 @@ def delete_job(id_job):
     if response:
         return redirect('/')
     abort(404)
-
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    form = LoginForm()
-    if form.validate_on_submit():
-        db_sess = db_session.create_session()
-        user = db_sess.query(User).filter(User.email == form.email.data).first()
-        if user and user.check_password(form.password.data):
-            login_user(user, remember=form.remember_me.data)
-            return redirect("/")
-        return render_template('login.html',
-                               message="Неправильный логин или пароль",
-                               form=form)
-    return render_template('login.html', title='Авторизация', form=form)
-
-
-@app.route('/')
-def index():
-    jobs = requests.get(f'{API_SERVER}/jobs').json()
-    users = requests.get(f'{API_SERVER}/users').json()
-    return render_template('works_log.html', data=jobs, data_leaders=users)
 
 
 @app.route('/departments')
@@ -221,13 +271,6 @@ def delete_dep(id_dep):
         session.delete(dep)
         session.commit()
     return redirect('/departments')
-
-
-@app.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    return redirect('/')
 
 
 @app.errorhandler(HTTPException)
