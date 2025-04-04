@@ -13,7 +13,7 @@ def get_users():
     session = db_session.create_session()
     users = session.query(User).all()
     return flask.jsonify({'users': ([item.to_dict(
-        only=('id', 'surname', 'name', 'age', 'position', 'speciality', 'address', 'email')
+        only=('id', 'surname', 'name', 'age', 'position', 'speciality', 'address', 'email', 'city_from')
     )
         for item in users])})
 
@@ -24,7 +24,7 @@ def get_user(id_user):
     user = session.query(User).get(id_user)
     if user:
         return flask.jsonify({'users': ([user.to_dict(
-            only=('id', 'surname', 'name', 'age', 'position', 'speciality', 'address', 'email')
+            only=('id', 'surname', 'name', 'age', 'position', 'speciality', 'address', 'email', 'city_from')
         )])})
     return flask.abort(404)
 

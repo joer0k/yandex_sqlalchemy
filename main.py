@@ -1,8 +1,11 @@
+import os
 from os import abort
 
 import requests
 from flask import Flask, render_template, redirect, request, abort, jsonify
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
+from requests.adapters import HTTPAdapter
+from urllib3 import Retry
 from werkzeug.exceptions import HTTPException
 
 from api.jobs_api import jobs_bp
@@ -23,6 +26,8 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 
 API_SERVER = 'http://127.0.0.1:8080/api'
+API_KEY_ST = 'f3a0fe3a-b07e-4840-a1da-06f18b2ddf13'
+API_KEY_GEO = 'd2f5711d-9e67-414c-aa2c-d7c0465aea3e'
 
 
 @login_manager.user_loader
@@ -273,6 +278,19 @@ def delete_dep(id_dep):
     return redirect('/departments')
 
 
+@app.route('/users_show/<int:id_user>', methods=['GET'])
+def show_map(id_user):
+    response = requests.get(f'{API_SERVER}/users/{id_user}')
+    if response.status_code != 200:
+        return redirect('/')
+    user_data = response.json()['users'][0]
+    response = get_static_api_image(get_ll(user_data['city_from'])['Point']['pos'].split())
+    if response:
+        with open('static/img/image.png', mode='wb') as file:
+            file.write(response)
+    return render_template('users_show.html', data=user_data)
+
+
 @app.errorhandler(HTTPException)
 def handle_http_exception(error):
     response = jsonify({
@@ -291,6 +309,44 @@ def handle_generic_exception(error):
     })
     response.status_code = 500
     return response
+
+
+def get_static_api_image(ll):
+    server = 'https://static-maps.yandex.ru/v1?'
+    map_params = {
+        'll': ','.join(map(str, ll)),
+        'apikey': API_KEY_ST,
+        'z': 12,
+        # 'l': 'sat',
+    }
+    session = requests.Session()
+    retry = Retry(total=10, connect=5, backoff_factor=0.5)
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('https://', adapter)
+    response = session.get(server, params=map_params)
+    if response:
+        return response.content
+    else:
+        return None
+
+
+def get_ll(address):
+    server = 'http://geocode-maps.yandex.ru/1.x/?'
+    map_params = {
+        'apikey': API_KEY_GEO,
+        'geocode': address,
+        'format': 'json',
+    }
+    session = requests.Session()
+    retry = Retry(total=10, connect=5, backoff_factor=0.5)
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('https://', adapter)
+    response = session.get(server, params=map_params)
+    if response:
+        if response.json()["response"]["GeoObjectCollection"]['metaDataProperty']['GeocoderResponseMetaData'][
+            'found'] != '0':
+            return response.json()["response"]["GeoObjectCollection"]["featureMember"][0]['GeoObject']
+    return None
 
 
 if __name__ == '__main__':
