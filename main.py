@@ -7,9 +7,10 @@ from flask_login import LoginManager, login_user, login_required, logout_user, c
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
 from werkzeug.exceptions import HTTPException
-
+from flask_restful import Api
 from api.jobs_api import jobs_bp
-from api.users_api import users_bp
+from api.users_api import users_bp, get_users, create_user
+from api_v2.users_api_v2 import UserResource, UserListResource
 from data import db_session
 from data.department_form import DepartmentForm
 from data.departments import Department
@@ -22,6 +23,11 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'yandexlyceum_secret_key'
 app.register_blueprint(jobs_bp, url_prefix='/api')
 app.register_blueprint(users_bp, url_prefix='/api')
+
+api_version2 = Api(app)
+api_version2.add_resource(UserListResource, '/api/v2/users')
+api_version2.add_resource(UserResource, '/api/v2/users/<int:id_user>')
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 
@@ -39,7 +45,7 @@ def load_user(user_id):
 @app.route('/')
 def index():
     jobs = requests.get(f'{API_SERVER}/jobs').json()
-    users = requests.get(f'{API_SERVER}/users').json()
+    users = get_users().json
     return render_template('works_log.html', data=jobs, data_leaders=users)
 
 
@@ -58,7 +64,9 @@ def register():
             'password': form.password.data,
             'repeat_password': form.password_repeat.data,
         }
-        response = requests.post(f'{API_SERVER}/users', json=user_data)
+        # response = requests.post(f'{API_SERVER}/users', json=user_data)
+        response = create_user(user_data).json
+        print(response)
         if response.status_code == 201:
             return redirect('/login')
         error_data = response.json()

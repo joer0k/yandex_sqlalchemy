@@ -1,28 +1,28 @@
 import requests
 
-print(requests.get('http://127.0.0.1:8080/api/jobs').json())
-# корректный запрос
-print(requests.put('http://127.0.0.1:8080/api/jobs/8', json={'job_title': 'пasdas работа',
-                                                             'work_size': 15,
-                                                             'collaborators': '1, 2',
-                                                             'is_finished': False,
-                                                             'team_leader_id': 1,
-                                                             'hazard_category_id': 1,
-                                                             }).json())
-# некорректный запрос. работа с таким названием уже есть в списке
-print(requests.put('http://127.0.0.1:8080/api/jobs/9', json={'job_title': 'первая работа',
-                                                             'work_size': 15,
-                                                             'collaborators': '1, 2',
-                                                             'is_finished': False,
-                                                             'team_leader_id': 1,
-                                                             'hazard_category_id': 1,
-                                                             }).json())
-# некорректный запрос. объем работы меньше 0
-print(requests.put('http://127.0.0.1:8080/api/jobs/10', json={'job_title': 'фыв работа',
-                                                              'work_size': -1212,
-                                                              'collaborators': '1, 2',
-                                                              'is_finished': False,
-                                                              'team_leader_id': 1,
-                                                              'hazard_category_id': 1,
-                                                              }).json())
-print(requests.get('http://127.0.0.1:8080/api/jobs').json())
+print(requests.get('http://127.0.0.1:8080/api/v2/users').json())
+# корректно
+print(requests.get('http://127.0.0.1:8080/api/v2/users/2').json())
+# неверный id
+print(requests.get('http://127.0.0.1:8080/api/v2/users/2123').json())
+# корректно
+print(requests.post('http://127.0.0.1:8080/api/v2/users', json={'name': 'Sonya', 'position': 'junior programmer',
+                                                                'surname': 'Wolf', 'age': '17', 'address': 'module_3',
+                                                                'speciality': 'computer sciences',
+                                                                'hashed_password': 'wolf',
+                                                                'email': 'wolf10@mars.org'}).json())
+# нет словаря
+print(requests.post('http://127.0.0.1:8080/api/v2/users', json={}).json())
+
+# возраст - строка
+print(requests.post('http://127.0.0.1:8080/api/v2/users', json={'name': 'Sonya', 'position': 'junior programmer',
+                                                                'surname': 'Wolf', 'age': 'фывфыв21фсчя17',
+                                                                'address': 'module_3',
+                                                                'speciality': 'computer sciences',
+                                                                'hashed_password': 'wolf',
+                                                                'email': 'wolf10@mars.org'}).json())
+
+# корректно
+print(requests.delete('http://127.0.0.1:8080/api/v2/users/8').json())
+# неверный id
+print(requests.delete('http://127.0.0.1:8080/api/v2/users/1238').json())
